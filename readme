@@ -1,1 +1,7 @@
-Empty for now
+Questions:
+1) STOR ACC, [address]
+2) 109
+3) An OPCODE would be needed for each new command. For compare, a new register and flags would be needed to store 
+the intemediary steps. For PUSH and PULL, a new register with the memory location of the stack would be needed. Two's
+compliment would only need the actual code for conversion.
+4) Details on which operation is being done would need to be passed.
