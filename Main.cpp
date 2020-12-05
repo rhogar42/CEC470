@@ -1,3 +1,183 @@
+#include <bitset>
+#include <cstdio>
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
+#include <iomanip>
+#include <sstream>
+#include <string>
+#include <vector>
+
+#define HALT_OPCODE 0x19
+
+using namespace std;
+
+void fetchNextInstruction(void);
+void executeInstruction(void);
+
+// Declare variables
+std::vector<unsigned char> mem(65536);
+unsigned char ACC = 0;	// Accumulator
+unsigned char IR = 0;	// Instruction Register
+unsigned int MAR = 0;	// Memory Address Register
+unsigned int PC = 0;	// Program Counter
+unsigned int oldPC;	// Old program counter
+unsigned int operand = 0;	// Avoid reading out of file
+
+int main() { // Reads file and runs two decoder functions
+	string hex_line;
+	int x = 0;
+	ifstream mem_read;
+
+	mem_read.open("mem_in.txt"); // Opens file
+	while (std::getline(mem_read, hex_line)) {
+		istringstream stream_in((hex_line)); // Hex to binary conversion
+		for (unsigned hex_to_bin; stream_in >> hex >> hex_to_bin;) {
+			mem[x] = hex_to_bin;
+			x++;
+		}
+	}
+
+	while (PC < mem.size() && (mem.at(PC)) != HALT_OPCODE)
+	{
+		fetchNextInstruction();
+		executeInstruction();
+	}
+
+	FILE* file_output;
+	file_output = fopen("mem_out.txt", "w");
+
+	for (unsigned int x = 0; x < mem.size();) {
+		for (int y = 0; y < 16; y++) {
+			fprintf(file_output, "%02X ", (mem[x]));
+			x++;
+		}
+		fprintf(file_output, "\n");
+	}
+	fclose(file_output);
+	return 0;
+}
+
+void fetchNextInstruction(void) {
+	IR = mem[PC];
+	oldPC = PC;
+	PC++; // Increase PC by 1 
+
+	if (IR & 0x80) {		// Che it is a Mathematical or Logical Operation
+
+		switch (IR & 0x0c) { // Checks the Destination of the instruction
+
+		case 0x00: // Chooses the destination: Indirect
+
+			switch (IR & 0x03) { // Checks the two least significant bits for the Source
+
+			case 0: // Chooses the source: Indirect
+				break;
+			case 1: // Chooses the source: Accumulator ACC
+				break;
+			case 2: // Chooses the source: Constant
+				PC++;
+				break;
+			case 3: // Chooses the source: Memory
+				PC += 2;
+				break;
+			default:
+				break;
+			}
+			break;
+		case 0x04: // Chooses the destination: Accumulator ACC
+
+			switch (IR & 0x03) { // Checks the two least significant bits for the Source
+
+			case 0: // Chooses the source: Indirect
+				break;
+			case 1: // Chooses the source: Accumulator ACC
+				break;
+			case 2: // Chooses the source: Constant
+				PC++;
+				break;
+			case 3: // Chooses the source: Memory
+				PC += 2;
+				break;
+			default:
+				break;
+			}
+			break;
+		case 0x08: // Chooses the destination: Address register MAR
+
+			switch (IR & 0x03) { // Checks the two least significant bits for the Source
+
+			case 0: // Chooses the source: Indirect (MAR used as a pointer)
+				break;
+			case 1: // Chooses the source: Accumulator ACC
+				break;
+			case 2: // Chooses the source: Constant
+				PC += 2;
+				break;
+			case 3: // Chooses the source: Memory
+				PC += 2;
+				break;
+			default:
+				break;
+			}
+			break;
+		case 0x0c: // Sets the destination to Memory
+
+			switch (IR & 0x03) { // Checks the two least significant bits for the Source
+
+			case 0: // Indirect (MAR used as a pointer)
+				PC += 2;
+				break;
+			case 1: // Accumulator ACC
+				PC += 2;
+				break;
+			case 2: // Constant
+				PC += 3;
+				break;
+			case 3: // Memory
+				PC += 4;
+				break;
+			default:
+				break;
+			}
+			break;
+		default:
+			break;
+		}
+	}
+	else if ((IR & 0xf0) == 0) { // 0000 XXXX
+		switch (IR & 0x7) {
+		case 0: // Register = Accumulator ACC / Method = Operand is used as address
+			PC += 2;
+			break;
+		case 1: // Register = Accumulator AAC / Method = Operand is used as a constant
+			PC++;
+			break;
+		case 2: // Register = Accumulator ACC / Method = Indirect (MAR used as a pointer)
+			break;
+		case 4: // Register = Index register MAR / Method = Operand is used as address
+			PC += 2;
+			break;
+		case 5: // Register = Index register MAR / Method = Operand is used as a constant
+			PC += 2;
+			break;
+		case 6: // Register = Index register MAR / Method = Indirect (MAR used as a pointer)
+			break;
+		default:
+			break;
+		}
+	}
+	else if ((IR & 0xf8) == 0X10) // Branches
+		PC += 2;
+	else
+	{
+
+	}
+
+	operand = PC - oldPC - 1;
+	PC &= 0xffff;	// Memory check
+}
+
 void executeInstruction(void){
 	int address;
 
